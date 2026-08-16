@@ -13,6 +13,8 @@ Cerberus-ASF combines APK decompilation and structural code auditing with live, 
 > ⚠️ **Authorized use only.** This tool is built for security researchers, penetration testers, and DevSecOps teams testing applications they own or are explicitly authorized to assess. Bypassing root detection, intercepting TLS traffic, or dumping process memory on an application without authorization may violate the law and the app's terms of service. You are responsible for how you use this tool.
 
 ---
+<img width="2816" height="1536" src="https://github.com/user-attachments/assets/5321f978-139e-485d-b499-19ef6c215fc7" />
+
 
 ## Contents
 
