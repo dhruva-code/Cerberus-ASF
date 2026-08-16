@@ -1,0 +1,9 @@
+{
+  "name": "cerberus-asf-agent",
+  "private": true,
+  "description": "Frida agent source for Cerberus-ASF dynamic analysis. Build with ./build.sh; the output (dist/core_hooks.js) is what the backend actually loads.",
+  "devDependencies": {
+    "frida-compile": "^19.0.5",
+    "frida-java-bridge": "^7.0.13"
+  }
+}

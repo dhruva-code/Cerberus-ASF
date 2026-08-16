@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerberus-ASF Enterprise Security Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { transition: background-color 0.2s ease, color 0.2s ease; }
+        .panel-card { background-color: #ffffff; border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 10px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03); }
+        .sidebar-item { border-left: 3px solid transparent; color: #475569; transition: all 0.15s ease; cursor: pointer; }
+        .sidebar-item:hover { background-color: #f8fafc; color: #1e293b; }
+        .sidebar-item.active { border-left-color: #2563eb; color: #1d4ed8; background-color: #eff6ff; font-weight: 600; }
+        
+        .console-box { background-color: #0b0f19; color: #34d399; }
+        .code-view { background-color: #f8fafc; color: #334155; border-left: 3px solid #10b981; border: 1px solid #e2e8f0; border-left-width: 3px; }
+        
+        .badge-CRITICAL { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+        .badge-HIGH { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+        .badge-MEDIUM { background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+        .badge-LOW { background-color: #fefce8; color: #854d0e; border: 1px solid #fef08a; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+        .badge-INFORMATIONAL, .badge-INFO { background-color: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+        .badge-SAFE { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+        
+        .status-EXPORTED { color: #b91c1c; font-weight: 600; background: #fef2f2; padding: 2px 6px; border-radius: 4px; font-size: 10px; border: 1px solid #fecaca; }
+        .status-INTERNAL { color: #047857; font-weight: 600; background: #ecfdf5; padding: 2px 6px; border-radius: 4px; font-size: 10px; border: 1px solid #a7f3d0; }
+        .status-DANGEROUS { color: #dc2626; font-weight: 600; }
+        .status-NORMAL { color: #059669; font-weight: 600; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background-color: #f8fafc; color: #64748b; text-align: left; padding: 12px 14px; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 600; }
+        td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: top; }
+        tr:hover { background-color: #f8fafc/60; }
+
+        .btn-download-pdf { background-color: #1e40af !important; color: #ffffff !important; }
+        .btn-download-pdf:hover { background-color: #1d4ed8 !important; }
+        .btn-download-fuzz { background-color: #047857 !important; color: #ffffff !important; }
+        .btn-download-fuzz:hover { background-color: #059669 !important; }
+
+        .dark body { background-color: #0f172a; color: #f1f5f9; }
+        .dark .panel-card { background-color: #1e293b; border-color: #334155; }
+        .dark .sidebar-item { color: #94a3b8; }
+        .dark .sidebar-item:hover { background-color: #334155/50; color: #f1f5f9; }
+        .dark .sidebar-item.active { background-color: #0f172a; color: #60a5fa; border-left-color: #3b82f6; }
+        .dark .code-view { background-color: #0f172a; color: #e2e8f0; border-color: #334155; border-left-color: #10b981; }
+        .dark th { background-color: #1e293b; color: #94a3b8; border-bottom-color: #334155; }
+        .dark td { border-bottom-color: #334155; color: #cbd5e1; }
+        .dark tr:hover { background-color: #334155/30; }
+        .dark .text-slate-800, .dark .text-slate-700, .dark .text-slate-600 { color: #f8fafc !important; }
+        .dark .bg-slate-50, .dark .bg-blue-50, .dark .bg-purple-50, .dark .bg-emerald-50, .dark .bg-orange-50 { background-color: #1e293b !important; border-color: #334155 !important; color: #f1f5f9 !important; }
+        .dark input { background-color: #0f172a !important; border-color: #334155 !important; color: #f1f5f9 !important; }
+        .dark .border-slate-200, .dark .border-slate-300 { border-color: #334155 !important; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 p-6 md:p-10 relative min-h-screen font-sans antialiased text-slate-700">
+    
+    <div id="upload_overlay" style="display: none;" class="fixed inset-0 z-50 flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-2xl max-w-md w-full text-center border border-slate-200 dark:border-slate-700">
+            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">Analyzing Target Application</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6 font-normal leading-relaxed">Parsing AST, mapping component structures, extracting architecture parameters, and verifying digital signatures. Please stand by.</p>
+            <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2 mb-3 overflow-hidden">
+                <div id="upload_progress_bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="upload_percentage" class="text-xs font-semibold text-blue-600 dark:text-blue-400 font-mono">0%</p>
+        </div>
+    </div>
+
+    <div id="auth_view" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-6">
+        <div class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center space-x-2.5 mb-6">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Cerberus-ASF Platform</h1>
+            </div>
+            <div class="flex space-x-2 mb-5 text-xs font-semibold">
+                <button id="auth_tab_login" onclick="switchAuthTab('login')" class="flex-1 py-2 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 transition">Login</button>
+                <button id="auth_tab_register" onclick="switchAuthTab('register')" class="flex-1 py-2 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 transition">Register</button>
+            </div>
+            <div class="space-y-3">
+                <input id="auth_username" type="text" placeholder="Username" autocomplete="username" class="w-full font-mono text-xs p-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition">
+                <input id="auth_password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter') submitAuth();" class="w-full font-mono text-xs p-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition">
+                <p id="auth_error" class="text-xs text-rose-600 hidden"></p>
+                <button id="auth_submit" onclick="submitAuth()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-md transition text-xs shadow-sm">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ai_settings_modal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-6">
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">AI Provider Settings</h3>
+                <button onclick="closeAiSettings()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Provider</label>
+                    <select id="ai_provider_select" onchange="updateAiSettingsFormVisibility()" class="w-full text-xs p-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="anthropic">Anthropic Claude</option>
+                        <option value="openai_compatible">OpenAI-Compatible (OpenAI, Azure, OpenRouter, Groq, Ollama, ...)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">API Key</label>
+                    <input id="ai_api_key_input" type="password" autocomplete="off" placeholder="sk-..." class="w-full font-mono text-xs p-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                    <p id="ai_key_existing_hint" class="hidden text-[10px] text-slate-500 mt-1">A key is already configured. Leave blank to keep it, or enter a new one to replace it.</p>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Model Name (optional override)</label>
+                    <input id="ai_model_name_input" type="text" placeholder="Provider default" class="w-full font-mono text-xs p-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                </div>
+                <div id="ai_base_url_row">
+                    <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">Base URL</label>
+                    <input id="ai_base_url_input" type="text" placeholder="https://api.openai.com/v1 (leave blank for OpenAI itself)" class="w-full font-mono text-xs p-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                </div>
+                <p id="ai_settings_status" class="text-[11px] text-slate-500"></p>
+            </div>
+            <button onclick="saveAiSettings()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-md transition text-xs shadow-sm">Save</button>
+        </div>
+    </div>
+
+    <div id="dashboard_view" style="display:none;" class="max-w-7xl mx-auto pb-16">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200/80 dark:border-slate-800 pb-6 mb-8 gap-4">
+            <div>
+                <div class="flex items-center space-x-2.5">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                    <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Cerberus-ASF Platform</h1>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider font-medium">Enterprise Mobile Security Assessment Suite</p>
+            </div>
+            <div class="flex items-center space-x-6 text-xs font-semibold">
+                <button id="btn_dynamic" onclick="switchViewMode('dynamic')" class="text-slate-500 hover:text-blue-600 pb-2 border-b-2 border-transparent transition">DYNAMIC AUDIT</button>
+                <button id="btn_static" onclick="switchViewMode('static')" class="text-blue-600 border-b-2 border-blue-600 pb-2 transition">STATIC SCANNER</button>
+                <div class="flex items-center space-x-2 pl-4 border-l border-slate-200 dark:border-slate-800">
+                    <span id="auth_user_label" class="text-[11px] font-mono text-slate-500 dark:text-slate-400"></span>
+                    <button onclick="logoutUser()" class="text-[11px] font-semibold text-slate-500 hover:text-rose-600 transition">Logout</button>
+                </div>
+                <button onclick="toggleTheme()" class="bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 p-2 rounded-md transition shadow-sm text-slate-600 dark:text-slate-300">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <div id="wrapper_dynamic" class="hidden grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="panel-card p-6 h-fit space-y-6">
+                <div>
+                    <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100">Execution Controls</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Configure runtime hook parameters and instrumentation.</p>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2">Target Package Identifier</label>
+                    <input id="package_name" type="text" value="generic.android.target" class="w-full font-mono text-xs p-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition">
+                </div>
+                <div class="space-y-3 pt-2">
+                    <label class="flex items-center space-x-3 text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                        <input id="root_bypass" type="checkbox" checked class="rounded border-slate-300 text-blue-600 w-4 h-4 focus:ring-blue-500/20">
+                        <span>Evade Root Detection Controls</span>
+                    </label>
+                    <label class="flex items-center space-x-3 text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                        <input id="pinning_bypass" type="checkbox" checked class="rounded border-slate-300 text-blue-600 w-4 h-4 focus:ring-blue-500/20">
+                        <span>Neutralize SSL Pinning Interception</span>
+                    </label>
+                </div>
+                <div class="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button id="btn_start" onclick="startEngine()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-md transition text-xs shadow-sm">Launch Pipeline</button>
+                    <button id="btn_stop" onclick="stopEngine()" class="w-full bg-slate-100 dark:bg-slate-800 text-slate-400 font-medium py-2.5 px-4 rounded-md text-xs cursor-not-allowed border border-slate-200 dark:border-slate-700" disabled>Stop Active Session</button>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                    <div>
+                        <h3 class="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Runtime Memory Forensics</h3>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Scan live process RAM for secrets, JWTs, and plaintext credentials.</p>
+                    </div>
+                    <div>
+                        <input id="mem_pattern" type="text" placeholder="Optional: Custom string / regex to search..." class="w-full font-mono text-[11px] p-2 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition">
+                    </div>
+                    <button id="btn_mem_scan" onclick="triggerMemoryScan()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 px-4 rounded-md transition text-xs shadow-sm flex items-center justify-center space-x-2">
+                        <svg class="w-3.5 h-3.5 animate-spin hidden" id="mem_spinner" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                        <span id="mem_btn_text">Scan RAM & Dump Secrets</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="lg:col-span-2 flex flex-col space-y-6">
+                <div class="panel-card p-6 flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                        <div class="flex space-x-2">
+                            <button id="tab_telemetry" onclick="switchConsole('telemetry')" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 rounded-md font-semibold transition">Framework Telemetry</button>
+                            <button id="tab_logcat" onclick="switchConsole('logcat')" class="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-md font-medium hover:bg-slate-200/60 transition">Live App Logcat</button>
+                        </div>
+                        <div class="flex items-center space-x-2 self-end sm:self-auto">
+                            <span class="text-[11px] font-semibold text-slate-400">STATUS:</span>
+                            <span id="crawler_status" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 uppercase">IDLE</span>
+                        </div>
+                    </div>
+
+                    <div id="logcat_filter_bar" class="hidden mb-3 flex items-center space-x-2 bg-slate-900 p-2 rounded-md border border-slate-800">
+                        <svg class="w-4 h-4 text-slate-500 shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input id="logcat_filter" type="text" oninput="applyLogcatFilter()" placeholder="Filter logcat by tag, PID, or string..." class="w-full bg-transparent text-xs text-slate-200 placeholder-slate-500 focus:outline-none font-mono">
+                        <button onclick="clearLogcatFilter()" class="text-[11px] px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-medium transition shrink-0">Clear</button>
+                        <button onclick="exportLogcat()" class="text-[11px] px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition shrink-0 flex items-center space-x-1 shadow-sm">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            <span>Export</span>
+                        </button>
+                    </div>
+
+                    <div id="console_output" class="console-box h-[420px] p-4 rounded-md overflow-y-auto font-mono text-xs space-y-1.5 border border-slate-800/80 shadow-inner">
+                        <div class="text-emerald-400/90">[System] Framework initialized. Standing by for dynamic instrumentation loops...</div>
+                    </div>
+                    <div id="logcat_output" class="console-box h-[420px] p-4 rounded-md overflow-y-auto font-mono text-xs space-y-1 border border-slate-800/80 shadow-inner hidden">
+                        <div class="text-slate-500">[Logcat] Standing by. Attach session to application process to stream live logs...</div>
+                    </div>
+                </div>
+
+                <div id="dynamic_summary" class="hidden panel-card p-6 border border-slate-200/80 dark:border-slate-800">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">Post-Analysis Findings Summary</h3>
+                    <div class="overflow-x-auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Vulnerability / Event</th>
+                                    <th>Severity Level</th>
+                                    <th>Detailed Description</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dynamic_summary_body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="memory_summary" class="hidden panel-card p-6 border border-purple-500/30 dark:border-purple-800/50 bg-purple-50/10 dark:bg-purple-950/10">
+                    <div class="flex justify-between items-center border-b border-slate-200/80 dark:border-slate-800 pb-3 mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
+                            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Live Memory Artifacts & Heap Dump</h3>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="exportMemoryDump()" class="text-xs px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded font-medium transition flex items-center space-x-1 shadow-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                <span>Export Dump</span>
+                            </button>
+                            <span class="text-xs font-mono text-purple-600 dark:text-purple-400 font-semibold bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded" id="mem_count_badge">0 Artifacts Extracted</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-[340px] overflow-y-auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Memory Address</th>
+                                    <th>Matched Category / Rule</th>
+                                    <th>Identified Data</th>
+                                    <th>Extracted Raw Buffer / Snippet</th>
+                                </tr>
+                            </thead>
+                            <tbody id="memory_summary_body" class="font-mono text-xs">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="wrapper_static" class="block space-y-8">
+            <div class="flex items-center space-x-3">
+                <button id="btn_new_scan" onclick="switchStaticSubView('upload')" class="text-xs font-semibold px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 transition">New Scan</button>
+                <button id="btn_history" onclick="switchStaticSubView('history')" class="text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200/60 transition">History</button>
+            </div>
+
+            <div id="history_view" class="hidden space-y-4">
+                <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-3">Scan History</h3>
+                <div class="panel-card overflow-x-auto">
+                    <table>
+                        <thead><tr><th>App Name</th><th>Package</th><th>File</th><th>Score</th><th>Date</th></tr></thead>
+                        <tbody id="table_history"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="dropzone_container" class="space-y-4">
+                <input type="file" id="apk_input" class="hidden" onchange="processUpload(this.files[0])" accept=".apk">
+                <div id="dropzone" ondragover="event.preventDefault();" ondragenter="event.preventDefault();" ondragleave="event.preventDefault();" ondrop="event.preventDefault(); if(event.dataTransfer.files.length > 0) { processUpload(event.dataTransfer.files[0]); }" onclick="document.getElementById('apk_input').click()" class="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 bg-white/50 dark:bg-slate-800/50 p-12 rounded-xl text-center cursor-pointer transition shadow-sm">
+                    <div class="max-w-md mx-auto space-y-2">
+                        <svg class="w-8 h-8 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p id="drop_title" class="text-sm font-semibold text-slate-800 dark:text-slate-200">Select or Drag Target APK Binary Here</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Automates bytecode analysis, cryptographic signature verification, manifest audits, and static taint flows.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-center space-x-3 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                    <label class="flex items-center space-x-3 text-sm font-medium text-blue-800 dark:text-blue-300 cursor-pointer">
+                        <input id="enable_deep_scan" type="checkbox" class="rounded border-blue-300 text-blue-600 w-4 h-4 focus:ring-blue-500/20">
+                        <span>Enable AI Deep Scan</span>
+                    </label>
+                    <span id="ai_status_badge" class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded">Not Configured</span>
+                    <button onclick="openAiSettings()" class="text-[11px] font-semibold text-blue-700 dark:text-blue-300 underline hover:no-underline">AI Settings</button>
+                </div>
+            </div>
+
+            <div id="report_workspace" class="hidden grid-cols-1 lg:grid-cols-4 gap-8">
+                <div class="panel-card p-3 h-fit space-y-1 flex flex-col border border-slate-200/80 dark:border-slate-800">
+                    <div class="p-4 border-b border-slate-100 dark:border-slate-800 mb-2 bg-slate-50/50 dark:bg-slate-900/50 rounded-md">
+                        <span class="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">Threat Index Score</span>
+                        <h2 id="metrics_score" class="text-3xl font-bold text-emerald-600 mt-1 font-mono">100</h2>
+                        <p id="metrics_pkg" class="text-[11px] font-mono text-slate-500 mt-1 break-all"></p>
+                    </div>
+                    <button onclick="activateSubCategory('info')" id="menu_info" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium active">App & File Metrics</button>
+                    <button onclick="activateSubCategory('security')" id="menu_security" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium">Security Findings</button>
+                    <button onclick="activateSubCategory('secrets')" id="menu_secrets" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium">Hardcoded Secrets</button>
+                    <button onclick="activateSubCategory('cert')" id="menu_cert" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium">Certificate Analysis</button>
+                    <button onclick="activateSubCategory('manifest')" id="menu_manifest" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium">Manifest Audit</button>
+                    <button onclick="activateSubCategory('permissions')" id="menu_permissions" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium">Permissions</button>
+                    <button onclick="activateSubCategory('components')" id="menu_components" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium">Component Topography</button>
+                    <button onclick="activateSubCategory('apkid')" id="menu_apkid" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium">Framework ID</button>
+                    <button onclick="activateSubCategory('recon')" id="menu_recon" class="sidebar-item w-full text-left p-2.5 rounded-md text-xs font-medium">Reconnaissance Maps</button>
+                    
+                    <div class="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col space-y-2">
+                        <button onclick="triggerPdfDownload()" class="w-full btn-download-pdf text-[11px] font-medium py-2 px-3 rounded-md transition tracking-wide shadow-sm">Export Executive PDF Report</button>
+                        <button onclick="triggerFuzzScriptDownload()" class="w-full btn-download-fuzz text-[11px] font-medium py-2 px-3 rounded-md transition tracking-wide shadow-sm">Download ADB Fuzz Script</button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 space-y-6">
+                    <div id="cat_info" class="sub-view space-y-6">
+                        <div id="ai_metrics_container" style="display: none;">
+                            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-2 mb-4">AI Deep Scan Metrics</h3>
+                            <div class="panel-card p-5 space-y-2.5 text-xs border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/30 dark:bg-indigo-900/10">
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-36 shrink-0">Model Used:</span> <span id="info_ai_model" class="font-mono text-indigo-700 dark:text-indigo-400 font-bold"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-36 shrink-0">Total Scan Time:</span> <span id="info_ai_time" class="font-mono text-indigo-700 dark:text-indigo-400"></span></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-2 mb-4">File Metadata</h3>
+                            <div class="panel-card p-5 space-y-2.5 text-xs">
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-36 shrink-0">File Name:</span> <span id="info_file_name" class="font-mono text-slate-700 dark:text-slate-300 break-all"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-36 shrink-0">File Size:</span> <span id="info_file_size" class="font-mono text-slate-700 dark:text-slate-300"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-36 shrink-0">MD5 Hash:</span> <span id="info_file_md5" class="font-mono text-slate-700 dark:text-slate-300 break-all"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-36 shrink-0">SHA1 Hash:</span> <span id="info_file_sha1" class="font-mono text-slate-700 dark:text-slate-300 break-all"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-36 shrink-0">SHA256 Hash:</span> <span id="info_file_sha256" class="font-mono text-slate-700 dark:text-slate-300 break-all"></span></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-2 mb-4">Application Structure</h3>
+                            <div class="panel-card p-5 space-y-2.5 text-xs">
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Application Name:</span> <span id="info_app_name" class="font-mono text-slate-700 dark:text-slate-300 break-all"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Package Identifier:</span> <span id="info_pkg_name" class="font-mono text-slate-700 dark:text-slate-300 break-all"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Launchable Activity:</span> <span id="info_main_activity" class="font-mono text-slate-700 dark:text-slate-300 break-all"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Target SDK Version:</span> <span id="info_target_sdk" class="font-mono text-slate-700 dark:text-slate-300"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Minimum SDK Version:</span> <span id="info_min_sdk" class="font-mono text-slate-700 dark:text-slate-300"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Android Version Name:</span> <span id="info_version_name" class="font-mono text-slate-700 dark:text-slate-300"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Android Version Code:</span> <span id="info_version_code" class="font-mono text-slate-700 dark:text-slate-300"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Native Architectures (JNI):</span> <span id="info_architectures" class="font-mono text-slate-700 dark:text-slate-300 font-bold text-blue-600"></span></div>
+                                <div class="flex"><span class="font-semibold text-slate-600 dark:text-slate-400 w-48 shrink-0">Hardware Features Reqs:</span> <span id="info_features" class="font-mono text-slate-700 dark:text-slate-300"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="cat_security" class="sub-view hidden space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-200/80 dark:border-slate-800 pb-3">
+                            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Static Security Vulnerability Audit</h3>
+                            <div class="flex space-x-4 text-xs">
+                                <label class="flex items-center space-x-1.5 cursor-pointer text-slate-600 dark:text-slate-300"><input type="checkbox" id="filter_high" checked onchange="filterFindingsBySeverity()" class="rounded border-slate-300 text-red-600 focus:ring-red-500/20"><span class="font-semibold text-red-600">HIGH</span></label>
+                                <label class="flex items-center space-x-1.5 cursor-pointer text-slate-600 dark:text-slate-300"><input type="checkbox" id="filter_medium" checked onchange="filterFindingsBySeverity()" class="rounded border-slate-300 text-orange-500 focus:ring-orange-500/20"><span class="font-semibold text-orange-600">MEDIUM</span></label>
+                                <label class="flex items-center space-x-1.5 cursor-pointer text-slate-600 dark:text-slate-300"><input type="checkbox" id="filter_third_party" onchange="filterFindingsBySeverity()" class="rounded border-slate-300 text-slate-500 focus:ring-slate-500/20"><span class="font-semibold text-slate-500">Show Third-Party Code</span></label>
+                            </div>
+                        </div>
+                        <p id="findings_scope_summary" class="text-[11px] text-slate-500 dark:text-slate-400 font-medium"></p>
+                        <div id="holder_security" class="space-y-4"></div>
+                    </div>
+
+                    <div id="cat_secrets" class="sub-view hidden space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-200/80 dark:border-slate-800 pb-3">
+                            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Hardcoded Secrets & Tokens</h3>
+                            <label class="flex items-center space-x-1.5 cursor-pointer text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" id="filter_secrets_third_party" onchange="filterSecretsByScope()" class="rounded border-slate-300 text-slate-500 focus:ring-slate-500/20"><span class="font-semibold text-slate-500">Show Third-Party Code</span></label>
+                        </div>
+                        <p id="secrets_scope_summary" class="text-[11px] text-slate-500 dark:text-slate-400 font-medium"></p>
+                        <div class="panel-card overflow-x-auto">
+                            <table>
+                                <thead><tr><th>Detector Type</th><th>Matched Secret Value</th><th>File / Asset Path</th><th>Threat Level</th></tr></thead>
+                                <tbody id="table_secrets"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="cat_cert" class="sub-view hidden space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-3">Signature Verification & OSINT Analysis</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4" id="cert_metrics"></div>
+                        <div class="panel-card overflow-x-auto">
+                            <table>
+                                <thead><tr><th>Identified Flaw</th><th>OWASP Category</th><th>Remediation Strategy</th><th>Severity</th></tr></thead>
+                                <tbody id="table_cert_issues"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="cat_manifest" class="sub-view hidden space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-3">Manifest Misconfigurations</h3>
+                        <div class="panel-card overflow-x-auto mb-6">
+                            <table>
+                                <thead><tr><th>Configuration Issue</th><th>Description</th><th>Remediation</th><th>Severity</th></tr></thead>
+                                <tbody id="table_manifest_issues"></tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                            <h4 class="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">AndroidManifest.xml Highlights</h4>
+                            <span class="text-[11px] text-slate-400 font-mono">Vulnerabilities marked in highlighted blocks</span>
+                        </div>
+                        <div class="panel-card p-4 h-96 overflow-y-auto bg-slate-50/50 dark:bg-slate-900 shadow-inner">
+                            <pre class="text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap"><code id="manifest_viewer"></code></pre>
+                        </div>
+                    </div>
+
+                    <div id="cat_permissions" class="sub-view hidden space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-3">Declared Platform Permissions</h3>
+                        <div class="panel-card overflow-x-auto">
+                            <table>
+                                <thead><tr><th>Permission String</th><th>Risk Status</th><th>Platform Description</th></tr></thead>
+                                <tbody id="table_permissions"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="cat_components" class="sub-view hidden space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-3">Component Attack Surface Topography</h3>
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div class="panel-card p-4 text-center border-slate-200/80 dark:border-slate-800"><h4 id="cnt_act" class="text-2xl font-bold text-blue-600 font-mono">0</h4><p class="text-[10px] text-slate-500 font-semibold uppercase mt-1">Activities</p><p id="cnt_act_exp" class="text-xs font-semibold text-red-600 mt-1">0 Exported</p></div>
+                            <div class="panel-card p-4 text-center border-slate-200/80 dark:border-slate-800"><h4 id="cnt_srv" class="text-2xl font-bold text-blue-600 font-mono">0</h4><p class="text-[10px] text-slate-500 font-semibold uppercase mt-1">Services</p><p id="cnt_srv_exp" class="text-xs font-semibold text-red-600 mt-1">0 Exported</p></div>
+                            <div class="panel-card p-4 text-center border-slate-200/80 dark:border-slate-800"><h4 id="cnt_rec" class="text-2xl font-bold text-blue-600 font-mono">0</h4><p class="text-[10px] text-slate-500 font-semibold uppercase mt-1">Receivers</p><p id="cnt_rec_exp" class="text-xs font-semibold text-red-600 mt-1">0 Exported</p></div>
+                            <div class="panel-card p-4 text-center border-slate-200/80 dark:border-slate-800"><h4 id="cnt_pro" class="text-2xl font-bold text-blue-600 font-mono">0</h4><p class="text-[10px] text-slate-500 font-semibold uppercase mt-1">Providers</p><p id="cnt_pro_exp" class="text-xs font-semibold text-red-600 mt-1">0 Exported</p></div>
+                        </div>
+                        <div class="panel-card h-96 overflow-y-auto">
+                            <table>
+                                <thead><tr><th>Component Fully Qualified Name</th><th>Type</th><th>Exposure Status</th></tr></thead>
+                                <tbody id="table_components"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="cat_apkid" class="sub-view hidden space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-3">Compiler & Framework Analysis</h3>
+                        <div class="panel-card overflow-x-auto">
+                            <table>
+                                <thead><tr><th>Detected Technology</th><th>Framework Description</th><th>Binary Evidence</th></tr></thead>
+                                <tbody id="table_apkid"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="cat_recon" class="sub-view hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="panel-card p-5 space-y-3">
+                            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 pb-2">Extracted URL Endpoints</h4>
+                            <ul id="list_urls" class="space-y-3.5 text-xs font-mono text-slate-600 dark:text-slate-400 max-h-96 overflow-y-auto pr-1 break-all"></ul>
+                        </div>
+                        <div class="panel-card p-5 space-y-3">
+                            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 pb-2">Extracted Email Communications</h4>
+                            <ul id="list_emails" class="space-y-3.5 text-xs font-mono text-slate-600 dark:text-slate-400 max-h-96 overflow-y-auto pr-1 break-all"></ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        
+        <footer class="mt-16 text-center border-t border-slate-200/80 dark:border-slate-800 pt-6">
+            <p class="text-xs font-medium text-slate-400">Developed by <span class="text-slate-600 dark:text-slate-300 font-semibold">DhruvaKumar Katakam</span></p>
+        </footer>
+    </div>
+
+    <script>
+        const hostIp = window.location.hostname || '127.0.0.1';
+        const baseHttpEndpoint = `http://${hostIp}:8000`;
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const baseWsEndpoint = `${wsProtocol}//${hostIp}:8000`;
+
+        const consoleOut = document.getElementById("console_output");
+        const logcatOut = document.getElementById("logcat_output");
+        const crawlerStatus = document.getElementById("crawler_status");
+        let activeFullReportObj = null;
+        let windowStreamSocket = null;
+        let uploadInterval = null;
+
+        // ==========================================
+        // AUTHENTICATION
+        // ==========================================
+        function authFetch(url, options = {}) {
+            const token = localStorage.getItem("cerberus_token");
+            options.headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+            return fetch(url, options).then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem("cerberus_token");
+                    localStorage.removeItem("cerberus_username");
+                    showAuthGate();
+                }
+                return res;
+            });
+        }
+
+        function showAuthGate() {
+            document.getElementById("dashboard_view").style.display = "none";
+            document.getElementById("auth_view").style.display = "flex";
+        }
+
+        function showDashboard(username) {
+            document.getElementById("auth_view").style.display = "none";
+            document.getElementById("dashboard_view").style.display = "block";
+            document.getElementById("auth_user_label").innerText = username;
+            connectTelemetrySocket();
+            loadAiCredentialStatus();
+        }
+
+        function switchAuthTab(mode) {
+            const loginTab = document.getElementById("auth_tab_login");
+            const registerTab = document.getElementById("auth_tab_register");
+            const submitBtn = document.getElementById("auth_submit");
+            const active = "flex-1 py-2 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 transition";
+            const inactive = "flex-1 py-2 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 transition";
+            loginTab.className = mode === "login" ? active : inactive;
+            registerTab.className = mode === "register" ? active : inactive;
+            submitBtn.innerText = mode === "login" ? "Login" : "Register";
+            submitBtn.setAttribute("data-mode", mode);
+            document.getElementById("auth_error").classList.add("hidden");
+        }
+
+        async function submitAuth() {
+            const mode = document.getElementById("auth_submit").getAttribute("data-mode") || "login";
+            const username = document.getElementById("auth_username").value.trim();
+            const password = document.getElementById("auth_password").value;
+            const errorEl = document.getElementById("auth_error");
+            errorEl.classList.add("hidden");
+
+            if (!username || !password) {
+                errorEl.innerText = "Username and password are required.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${baseHttpEndpoint}/api/auth/${mode === "login" ? "login" : "register"}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errorEl.innerText = data.detail || "Authentication failed.";
+                    errorEl.classList.remove("hidden");
+                    return;
+                }
+                localStorage.setItem("cerberus_token", data.token);
+                localStorage.setItem("cerberus_username", data.username);
+                showDashboard(data.username);
+            } catch (e) {
+                errorEl.innerText = "Could not reach the Cerberus-ASF backend.";
+                errorEl.classList.remove("hidden");
+            }
+        }
+
+        async function logoutUser() {
+            try { await authFetch(`${baseHttpEndpoint}/api/auth/logout`, { method: "POST" }); } catch (e) {}
+            localStorage.removeItem("cerberus_token");
+            localStorage.removeItem("cerberus_username");
+            if (windowStreamSocket) { try { windowStreamSocket.close(); } catch (e) {} }
+            showAuthGate();
+        }
+
+        async function checkAuthOnLoad() {
+            const token = localStorage.getItem("cerberus_token");
+            if (!token) { showAuthGate(); return; }
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/auth/me`);
+                if (!res.ok) { showAuthGate(); return; }
+                const data = await res.json();
+                localStorage.setItem("cerberus_username", data.username);
+                showDashboard(data.username);
+            } catch (e) {
+                showAuthGate();
+            }
+        }
+
+        function connectTelemetrySocket() {
+            const token = localStorage.getItem("cerberus_token");
+            try {
+                windowStreamSocket = new WebSocket(`${baseWsEndpoint}/ws/telemetry?token=${encodeURIComponent(token)}`);
+                windowStreamSocket.onmessage = function(e) {
+                    const msg = JSON.parse(e.data);
+
+                    if (msg.type === "telemetry") {
+                        const logDiv = document.createElement("div");
+                        let timestamp = new Date().toLocaleTimeString().toLowerCase();
+
+                        if (msg.data.level === "warning") logDiv.className = "text-amber-400 font-medium";
+                        else if (msg.data.level === "error") logDiv.className = "text-rose-400 font-semibold";
+                        else logDiv.className = "text-emerald-400/90";
+
+                        logDiv.innerText = `[${timestamp}] ${msg.data.message}`;
+                        consoleOut.appendChild(logDiv);
+                        consoleOut.scrollTop = consoleOut.scrollHeight;
+                    }
+                    else if (msg.type === "logcat") {
+                        const logDiv = document.createElement("div");
+                        logDiv.className = "text-slate-300 font-mono py-0.5 border-b border-slate-800/40 hover:bg-slate-800/30 px-1 transition-colors";
+                        logDiv.innerText = msg.data.message;
+
+                        const filterQuery = document.getElementById("logcat_filter").value.toLowerCase();
+                        if (filterQuery && !msg.data.message.toLowerCase().includes(filterQuery)) {
+                            logDiv.style.display = "none";
+                        }
+
+                        logcatOut.appendChild(logDiv);
+                        logcatOut.scrollTop = logcatOut.scrollHeight;
+                    }
+                };
+            } catch (e) { console.warn("WebSocket initialization blocked:", e); }
+        }
+
+        // ==========================================
+        // AI PROVIDER SETTINGS
+        // ==========================================
+        function openAiSettings() {
+            document.getElementById("ai_settings_modal").style.display = "flex";
+            loadAiCredentialStatus(true);
+        }
+
+        function closeAiSettings() {
+            document.getElementById("ai_settings_modal").style.display = "none";
+        }
+
+        function updateAiSettingsFormVisibility() {
+            const provider = document.getElementById("ai_provider_select").value;
+            document.getElementById("ai_base_url_row").style.display = provider === "openai_compatible" ? "block" : "none";
+        }
+
+        async function loadAiCredentialStatus(populateForm = false) {
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/ai/credentials`);
+                const data = await res.json();
+                const badge = document.getElementById("ai_status_badge");
+                if (data.configured) {
+                    badge.innerText = `Configured: ${data.provider}`;
+                    badge.className = "text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 rounded";
+                } else {
+                    badge.innerText = "Not Configured";
+                    badge.className = "text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded";
+                }
+                if (populateForm) {
+                    if (data.configured) {
+                        document.getElementById("ai_provider_select").value = data.provider;
+                        document.getElementById("ai_model_name_input").value = data.model_name || "";
+                        document.getElementById("ai_base_url_input").value = data.base_url || "";
+                        document.getElementById("ai_key_existing_hint").classList.remove("hidden");
+                    } else {
+                        document.getElementById("ai_key_existing_hint").classList.add("hidden");
+                    }
+                    document.getElementById("ai_api_key_input").value = "";
+                    updateAiSettingsFormVisibility();
+                }
+            } catch (e) { /* non-fatal, badge just stays at default */ }
+        }
+
+        async function saveAiSettings() {
+            const provider = document.getElementById("ai_provider_select").value;
+            const apiKey = document.getElementById("ai_api_key_input").value.trim();
+            const modelName = document.getElementById("ai_model_name_input").value.trim();
+            const baseUrl = document.getElementById("ai_base_url_input").value.trim();
+            const status = document.getElementById("ai_settings_status");
+
+            if (!apiKey) {
+                status.innerText = "Enter an API key to save.";
+                status.className = "text-[11px] text-rose-600";
+                return;
+            }
+
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/ai/credentials`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ provider, api_key: apiKey, base_url: baseUrl || null, model_name: modelName || null }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    status.innerText = data.detail || "Failed to save.";
+                    status.className = "text-[11px] text-rose-600";
+                    return;
+                }
+                status.innerText = "Saved.";
+                status.className = "text-[11px] text-emerald-600";
+                await loadAiCredentialStatus();
+                setTimeout(closeAiSettings, 600);
+            } catch (e) {
+                status.innerText = "Could not reach the backend.";
+                status.className = "text-[11px] text-rose-600";
+            }
+        }
+
+        // ==========================================
+        // SCAN HISTORY / NEW SCAN
+        // ==========================================
+        function switchStaticSubView(mode) {
+            const dropzone = document.getElementById("dropzone_container");
+            const history = document.getElementById("history_view");
+            const report = document.getElementById("report_workspace");
+            const newScanBtn = document.getElementById("btn_new_scan");
+            const historyBtn = document.getElementById("btn_history");
+            const activeCls = "text-xs font-semibold px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 transition";
+            const inactiveCls = "text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200/60 transition";
+
+            dropzone.style.display = "none";
+            history.classList.add("hidden");
+            report.style.display = "none";
+            newScanBtn.className = inactiveCls;
+            historyBtn.className = inactiveCls;
+
+            if (mode === "history") {
+                history.classList.remove("hidden");
+                historyBtn.className = activeCls;
+                loadScanHistory();
+            } else if (mode === "report") {
+                report.style.display = "grid";
+            } else {
+                dropzone.style.display = "block";
+                newScanBtn.className = activeCls;
+                activeFullReportObj = null;
+                document.getElementById("apk_input").value = "";
+            }
+        }
+
+        async function loadScanHistory() {
+            const tbody = document.getElementById("table_history");
+            tbody.innerHTML = "<tr><td colspan='5' class='text-center text-slate-400 italic py-6'>Loading...</td></tr>";
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/scans`);
+                const scans = await res.json();
+                if (!scans.length) {
+                    tbody.innerHTML = "<tr><td colspan='5' class='text-center text-slate-400 italic py-6'>No past scans yet.</td></tr>";
+                    return;
+                }
+                tbody.innerHTML = "";
+                scans.forEach(s => {
+                    const tr = document.createElement("tr");
+                    tr.className = "cursor-pointer";
+                    tr.onclick = () => loadScanFromHistory(s.id);
+                    tr.innerHTML = `
+                        <td class="font-medium text-slate-700 dark:text-slate-300">${escapeHtml(s.app_name || "Unknown")}</td>
+                        <td class="font-mono text-xs text-slate-500 break-all">${escapeHtml(s.package_name || "")}</td>
+                        <td class="text-xs text-slate-500 break-all">${escapeHtml(s.file_name || "")}</td>
+                        <td class="font-mono text-xs font-semibold ${s.security_score < 50 ? 'text-rose-600' : s.security_score < 80 ? 'text-amber-500' : 'text-emerald-600'}">${s.security_score ?? "N/A"}</td>
+                        <td class="text-xs text-slate-500">${escapeHtml(s.created_at || "")}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                tbody.innerHTML = "<tr><td colspan='5' class='text-center text-rose-500 italic py-6'>Failed to load scan history.</td></tr>";
+            }
+        }
+
+        async function loadScanFromHistory(scanId) {
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/scans/${scanId}`);
+                if (!res.ok) { alert("Could not load that scan."); return; }
+                const data = await res.json();
+                renderFullReport(data);
+                switchStaticSubView("report");
+            } catch (e) {
+                alert("Could not load that scan.");
+            }
+        }
+
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+
+        function switchViewMode(mode) {
+            const dynamicBtn = document.getElementById('btn_dynamic');
+            const staticBtn = document.getElementById('btn_static');
+            const dynamicWrapper = document.getElementById('wrapper_dynamic');
+            const staticWrapper = document.getElementById('wrapper_static');
+
+            [dynamicBtn, staticBtn].forEach(b => b.className = "text-slate-500 hover:text-blue-600 pb-2 border-b-2 border-transparent transition");
+            dynamicWrapper.style.display = 'none';
+            staticWrapper.style.display = 'none';
+
+            if (mode === 'dynamic') {
+                dynamicBtn.className = "text-blue-600 border-b-2 border-blue-600 pb-2 transition";
+                dynamicWrapper.style.display = 'grid';
+            } else {
+                staticBtn.className = "text-blue-600 border-b-2 border-blue-600 pb-2 transition";
+                staticWrapper.style.display = 'block';
+            }
+        }
+
+        function activateSubCategory(target) {
+            document.querySelectorAll(".sidebar-item").forEach(el => el.classList.remove('active'));
+            document.querySelectorAll(".sub-view").forEach(el => el.classList.add('hidden'));
+            document.getElementById(`menu_${target}`).classList.add('active');
+            document.getElementById(`cat_${target}`).classList.remove('hidden');
+        }
+
+        function switchConsole(type) {
+            const tabTel = document.getElementById('tab_telemetry');
+            const tabLog = document.getElementById('tab_logcat');
+            const filterBar = document.getElementById('logcat_filter_bar');
+            
+            [tabTel, tabLog].forEach(t => t.className = "text-xs px-3 py-1.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-md font-medium hover:bg-slate-200/60 transition");
+            consoleOut.style.display = 'none';
+            logcatOut.style.display = 'none';
+            filterBar.classList.add('hidden');
+
+            if (type === 'telemetry') {
+                tabTel.className = "text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 rounded-md font-semibold transition";
+                consoleOut.style.display = 'block';
+            } else {
+                tabLog.className = "text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 rounded-md font-semibold transition";
+                logcatOut.style.display = 'block';
+                filterBar.classList.remove('hidden');
+            }
+        }
+
+        function applyLogcatFilter() {
+            const query = document.getElementById("logcat_filter").value.toLowerCase();
+            const logs = logcatOut.children;
+            for (let i = 0; i < logs.length; i++) {
+                const text = logs[i].innerText.toLowerCase();
+                logs[i].style.display = text.includes(query) ? "" : "none";
+            }
+        }
+
+        function clearLogcatFilter() {
+            document.getElementById("logcat_filter").value = "";
+            applyLogcatFilter();
+        }
+
+        function exportLogcat() {
+            const logs = document.getElementById("logcat_output").children;
+            let exportData = "";
+            for (let i = 0; i < logs.length; i++) {
+                if (logs[i].style.display !== "none" && !logs[i].innerText.includes("[Logcat] Standing by.")) {
+                    exportData += logs[i].innerText + "\n";
+                }
+            }
+            if (!exportData.trim()) {
+                alert("No filtered logs available to export.");
+                return;
+            }
+            const blob = new Blob([exportData], { type: "text/plain;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `cerberus_logcat_export_${Date.now()}.txt`;
+            link.click();
+        }
+
+        function exportMemoryDump() {
+            const tbody = document.getElementById("memory_summary_body");
+            if (!tbody || tbody.children.length === 0 || tbody.innerText.includes("No sensitive string matches")) {
+                alert("No memory artifacts available to export.");
+                return;
+            }
+            let csvContent = "Memory Address,Matched Category / Rule,Identified Data,Extracted Raw Buffer\n";
+            for (let i = 0; i < tbody.children.length; i++) {
+                const cols = tbody.children[i].querySelectorAll("td");
+                if (cols.length >= 4) {
+                    const address = cols[0].innerText.replace(/"/g, '""');
+                    const category = cols[1].innerText.replace(/"/g, '""');
+                    const identified = cols[2].innerText.replace(/"/g, '""');
+                    const snippet = cols[3].innerText.replace(/"/g, '""');
+                    csvContent += `"${address}","${category}","${identified}","${snippet}"\n`;
+                }
+            }
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `cerberus_memory_dump_${Date.now()}.csv`;
+            link.click();
+        }
+
+        function escapeHtml(text) { return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
+
+        function filterFindingsBySeverity() {
+            if (!activeFullReportObj) return;
+            const showHigh = document.getElementById("filter_high").checked;
+            const showMedium = document.getElementById("filter_medium").checked;
+            const showThirdParty = document.getElementById("filter_third_party").checked;
+
+            document.querySelectorAll("#holder_security > div").forEach(card => {
+                const cardSev = card.getAttribute("data-severity");
+                const cardScope = card.getAttribute("data-scope");
+                if (cardSev === "HIGH" && !showHigh) card.classList.add("hidden");
+                else if (cardSev === "MEDIUM" && !showMedium) card.classList.add("hidden");
+                else if (cardScope === "third_party" && !showThirdParty) card.classList.add("hidden");
+                else card.classList.remove("hidden");
+            });
+        }
+
+        function filterSecretsByScope() {
+            if (!activeFullReportObj) return;
+            const showThirdParty = document.getElementById("filter_secrets_third_party").checked;
+
+            document.querySelectorAll("#table_secrets > tr").forEach(row => {
+                const rowScope = row.getAttribute("data-scope");
+                if (rowScope === "third_party" && !showThirdParty) row.classList.add("hidden");
+                else row.classList.remove("hidden");
+            });
+        }
+
+        function renderScopeSummary(elementId, summary) {
+            const el = document.getElementById(elementId);
+            if (!el || !summary) { if (el) el.innerText = ""; return; }
+            const hidden = summary.third_party || 0;
+            let text = `${summary.app || 0} app-code`;
+            if (summary.unknown) text += ` · ${summary.unknown} unclassified`;
+            text += ` · ${summary.total} total`;
+            if (hidden > 0) text += ` — ${hidden} third-party findings hidden by default (toggle "Show Third-Party Code" to view)`;
+            el.innerText = text;
+        }
+
+        async function processUpload(file) {
+            if(!file) return;
+            const overlay = document.getElementById("upload_overlay");
+            const progBar = document.getElementById("upload_progress_bar");
+            const progText = document.getElementById("upload_percentage");
+            
+            overlay.style.display = "flex";
+            let progress = 0;
+            progBar.style.width = "0%";
+            progText.innerText = "0%";
+            
+            uploadInterval = setInterval(() => {
+                if (progress < 95) {
+                    progress += Math.random() * 5;
+                    if(progress > 95) progress = 95;
+                    progBar.style.width = Math.floor(progress) + "%";
+                    progText.innerText = Math.floor(progress) + "%";
+                }
+            }, 400);
+
+            const formData = new FormData();
+            formData.append("file", file);
+            
+            const isDeepScan = document.getElementById("enable_deep_scan")?.checked || false;
+            formData.append("deep_scan", isDeepScan);
+
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/static/upload`, { method: "POST", body: formData });
+                const data = await res.json();
+
+                if(data.status === "error") throw new Error(data.message);
+
+                clearInterval(uploadInterval);
+                progBar.style.width = "100%";
+                progText.innerText = "100%";
+
+                setTimeout(() => {
+                    overlay.style.display = "none";
+                    renderFullReport(data);
+                    switchStaticSubView('report');
+                }, 400);
+
+            } catch(err) {
+                console.error(err);
+                clearInterval(uploadInterval);
+                overlay.style.display = "none";
+                alert("Extraction Exception: " + err.message);
+            }
+        }
+
+        function renderFullReport(data) {
+                    activeFullReportObj = data;
+
+                    document.getElementById("metrics_score").innerText = data.security_score;
+                    document.getElementById("metrics_pkg").innerText = data.package_name;
+                    document.getElementById("package_name").value = data.package_name;
+                    
+                    if(data.security_score < 50) document.getElementById("metrics_score").className = "text-3xl font-bold text-rose-600 mt-1 font-mono";
+                    else if (data.security_score < 80) document.getElementById("metrics_score").className = "text-3xl font-bold text-amber-500 mt-1 font-mono";
+                    else document.getElementById("metrics_score").className = "text-3xl font-bold text-emerald-600 mt-1 font-mono";
+
+                    if (data.ai_metadata && data.ai_metadata.performed) {
+                        document.getElementById("ai_metrics_container").style.display = "block";
+                        document.getElementById("info_ai_model").innerText = data.ai_metadata.llm;
+                        document.getElementById("info_ai_time").innerText = data.ai_metadata.time_taken_seconds + " seconds";
+                    } else {
+                        document.getElementById("ai_metrics_container").style.display = "none";
+                    }
+
+                    document.getElementById("info_file_name").innerText = data.file_info?.name || "N/A";
+                    document.getElementById("info_file_size").innerText = data.file_info?.size || "N/A";
+                    document.getElementById("info_file_md5").innerText = data.file_info?.md5 || "N/A";
+                    document.getElementById("info_file_sha1").innerText = data.file_info?.sha1 || "N/A";
+                    document.getElementById("info_file_sha256").innerText = data.file_info?.sha256 || "N/A";
+
+                    document.getElementById("info_app_name").innerText = data.app_info?.app_name || "N/A";
+                    document.getElementById("info_pkg_name").innerText = data.app_info?.package_name || "N/A";
+                    document.getElementById("info_main_activity").innerText = data.app_info?.main_activity || "N/A";
+                    document.getElementById("info_target_sdk").innerText = data.app_info?.target_sdk || "N/A";
+                    document.getElementById("info_min_sdk").innerText = data.app_info?.min_sdk || "N/A";
+                    
+                    // Added Architecture and Hardware details
+                    document.getElementById("info_architectures").innerText = data.app_info?.native_architectures || "N/A";
+                    document.getElementById("info_features").innerText = data.app_info?.hardware_features + " Features Required" || "N/A";
+                    
+                    document.getElementById("info_version_name").innerText = data.app_info?.version_name || "N/A";
+                    document.getElementById("info_version_code").innerText = data.app_info?.version_code || "N/A";
+
+                    renderScopeSummary("findings_scope_summary", data.findings_summary);
+                    const securityHolder = document.getElementById("holder_security");
+                    securityHolder.innerHTML = "";
+                    data.findings.forEach((issue) => {
+                        const card = document.createElement("div");
+                        card.className = "panel-card mb-4 p-5";
+                        card.setAttribute("data-severity", issue.severity);
+                        card.setAttribute("data-scope", issue.scope || "unknown");
+                        card.innerHTML = `
+                            <div class="flex justify-between items-center mb-2.5">
+                                <div class="flex items-center">
+                                    <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-100">${issue.title}</h4>
+                                    ${issue.ai_verified ? '<span class="ml-2 bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>AI Verified</span>' : ''}
+                                </div>
+                                <span class="badge-${issue.severity}">${issue.severity}</span>
+                            </div>
+                            <div class="mb-3"><span class="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded px-2 py-0.5 font-semibold text-[10px] uppercase">${issue.owasp || 'Code Security'}</span></div>
+                            <p class="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">${issue.description}</p>
+                            <p class="text-xs text-emerald-700 dark:text-emerald-400 mb-4 font-medium bg-emerald-50 dark:bg-emerald-950/40 p-2.5 border border-emerald-200 dark:border-emerald-800 rounded-md">Remediation: ${issue.remediation}</p>
+                            <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-1 font-medium">Target Asset: ${issue.target} (${issue.line || 'Semantic Source Analysis'})</p>
+                            ${issue.code ? '<pre class="code-view p-3 rounded-md text-[11px] overflow-x-auto"><code>' + escapeHtml(issue.code) + '</code></pre>' : ''}
+                            ${issue.ai_reason ? '<div class="mt-3 text-[11px] text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 p-2.5 rounded border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-2"><svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg><span class="leading-relaxed"><strong>AI Insight:</strong> ' + escapeHtml(issue.ai_reason) + '</span></div>' : ''}
+                        `;
+                        securityHolder.appendChild(card);
+                    });
+                    if(!data.findings.length) securityHolder.innerHTML = "<p class='text-xs text-emerald-600 font-medium bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-md border border-emerald-200 dark:border-emerald-800'>No standard code vulnerabilities detected.</p>";
+                    filterFindingsBySeverity();
+
+                    renderScopeSummary("secrets_scope_summary", data.secrets_summary);
+                    const tbodySec = document.getElementById("table_secrets"); tbodySec.innerHTML = "";
+                    data.secrets.forEach(s => {
+                        let typeHtml = s.type;
+                        if(s.ai_verified) {
+                            typeHtml += '<br><span class="inline-flex items-center gap-1 mt-1 bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>AI Verified</span>';
+                        }
+
+                        let valueHtml = escapeHtml(s.value);
+                        if (s.ai_reason) {
+                            valueHtml += '<div class="mt-2 text-[10px] text-indigo-600 dark:text-indigo-400 font-sans italic leading-tight">' + escapeHtml(s.ai_reason) + '</div>';
+                        }
+
+                        tbodySec.innerHTML += '<tr data-scope="' + (s.scope || "unknown") + '"><td class="font-medium text-slate-700 dark:text-slate-300 leading-tight">' + typeHtml + '</td><td class="font-mono text-amber-600 dark:text-amber-400 break-all text-xs">' + valueHtml + '</td><td class="text-xs text-slate-500 break-all">' + s.file + '</td><td><span class="badge-' + s.severity + '">' + s.severity + '</span></td></tr>';
+                    });
+                    if(!data.secrets.length) tbodySec.innerHTML = "<tr><td colspan='4' class='text-center text-slate-400 italic py-6'>No hardcoded secrets discovered.</td></tr>";
+                    filterSecretsByScope();
+
+                    const c = data.certificate;
+                    const cMet = document.getElementById("cert_metrics");
+                    cMet.innerHTML = `
+                        <div class="panel-card p-4"><p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Cryptographic Status</p><p class="text-xs font-mono mt-1.5 font-semibold ${c.is_signed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}">${c.is_signed ? 'SIGNED (VALID)' : 'UNSIGNED / INVALID'}</p></div>
+                        <div class="panel-card p-4"><p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Scheme Support Matrix</p><p class="text-xs font-mono mt-1.5 font-semibold text-blue-600 dark:text-blue-400">v1:${c.v1} | v2:${c.v2} | v3:${c.v3} | v4:${c.v4}</p><p class="text-[11px] font-mono text-slate-500 mt-1">Key Size: ${c.details?.bit_size || 'N/A'} Bits</p></div>
+                        <div class="panel-card p-4 col-span-1 md:col-span-2"><p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-2">Subject & Expiration Profiles</p>
+                           <div class="text-xs font-mono text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 p-3 rounded border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-2">
+                              <div class="col-span-1 md:col-span-2"><b>Issuer:</b> ${escapeHtml(c.details?.issuer || 'N/A')}</div>
+                              <div class="col-span-1 md:col-span-2"><b>Subject:</b> ${escapeHtml(c.details?.subject || 'N/A')}</div>
+                              <div><b>Valid From:</b> ${escapeHtml(c.details?.valid_from || 'N/A')}</div>
+                              <div><b>Valid To:</b> ${escapeHtml(c.details?.valid_to || 'N/A')}</div>
+                              <div><b>Algorithm:</b> ${escapeHtml(c.details?.signature_algo || 'N/A')}</div>
+                              <div><b>Serial Number:</b> ${escapeHtml(c.details?.serial || 'N/A')}</div>
+                              <div class="col-span-1 md:col-span-2"><b>SHA1 Fingerprint:</b> ${escapeHtml(c.details?.sha1 || 'N/A')}</div>
+                              <div class="col-span-1 md:col-span-2"><b>SHA256 Fingerprint:</b> ${escapeHtml(c.details?.sha256 || 'N/A')}</div>
+                           </div>
+                           ${c.details?.sha256 && c.details.sha256 !== "N/A" ? `
+                           <div class="flex space-x-2 mt-3">
+                               <a href="https://crt.sh/?q=${c.details.sha256}" target="_blank" class="px-2.5 py-1 text-[11px] bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white dark:bg-blue-900/30 dark:text-blue-300 transition font-medium rounded border border-blue-200 dark:border-blue-800">Lookup on crt.sh</a>
+                               <a href="https://censys.io/certificates?q=${c.details.sha256}" target="_blank" class="px-2.5 py-1 text-[11px] bg-slate-100 text-slate-700 hover:bg-slate-700 hover:text-white dark:bg-slate-800 dark:text-slate-300 transition font-medium rounded border border-slate-200 dark:border-slate-700">Query Censys</a>
+                           </div>` : ''}
+                        </div>
+                    `;
+                    const tbodyCert = document.getElementById("table_cert_issues"); tbodyCert.innerHTML = "";
+                    c.issues.forEach(i => {
+                        tbodyCert.innerHTML += `<tr><td class="font-medium text-rose-600">${i.issue}<br><a href="${i.link}" class="text-[11px] text-blue-600 hover:underline mt-1 inline-block" target="_blank">Reference Guideline</a></td><td class="text-xs font-semibold text-slate-500">${i.owasp}</td><td class="text-xs text-emerald-700 dark:text-emerald-400">${i.remediation}</td><td><span class="badge-${i.severity}">${i.severity}</span></td></tr>`;
+                    });
+                    if(!c.issues.length) tbodyCert.innerHTML = "<tr><td colspan='4' class='text-center text-emerald-600 font-medium py-6'>Cryptographic parameters strictly enforced. No flaws found.</td></tr>";
+
+                    const tbodyMan = document.getElementById("table_manifest_issues"); tbodyMan.innerHTML = "";
+                    data.manifest_analysis.forEach(m => {
+                        tbodyMan.innerHTML += `<tr><td class="font-medium text-amber-600 dark:text-amber-400">${m.issue}</td><td class="text-xs text-slate-600 dark:text-slate-400">${m.description}</td><td class="text-xs text-emerald-700 dark:text-emerald-400">${m.remediation}</td><td><span class="badge-${m.severity}">${m.severity}</span></td></tr>`;
+                    });
+                    if(!data.manifest_analysis.length) tbodyMan.innerHTML = "<tr><td colspan='4' class='text-center text-slate-400 italic py-6'>No manifest configuration flaws detected.</td></tr>";
+                    
+                    let safeManifest = escapeHtml(data.manifest_xml);
+                    safeManifest = safeManifest.replace(/(exported=&quot;true&quot;)/g, '<span class="bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-semibold px-1 rounded">$1</span>');
+                    safeManifest = safeManifest.replace(/(usesCleartextTraffic=&quot;true&quot;)/g, '<span class="bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-semibold px-1 rounded">$1</span>');
+                    safeManifest = safeManifest.replace(/(allowBackup=&quot;true&quot;)/g, '<span class="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-semibold px-1 rounded">$1</span>');
+                    safeManifest = safeManifest.replace(/(debuggable=&quot;true&quot;)/g, '<span class="bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-semibold px-1 rounded">$1</span>');
+                    document.getElementById("manifest_viewer").innerHTML = safeManifest;
+
+                    const tbodyPerm = document.getElementById("table_permissions"); tbodyPerm.innerHTML = "";
+                    data.permissions.forEach(p => {
+                        tbodyPerm.innerHTML += `<tr><td class="font-mono text-xs text-slate-700 dark:text-slate-300">${p.name}</td><td class="status-${p.status}">${p.status}</td><td class="text-xs text-slate-600 dark:text-slate-400">${p.description}</td></tr>`;
+                    });
+                    if(!data.permissions.length) tbodyPerm.innerHTML = "<tr><td colspan='3' class='text-center text-slate-400 italic py-6'>No platform permissions declared.</td></tr>";
+
+                    const comps = data.components;
+                    document.getElementById("cnt_act").innerText = comps.activities.total; document.getElementById("cnt_act_exp").innerText = `${comps.activities.exported} EXPORTED`;
+                    document.getElementById("cnt_srv").innerText = comps.services.total; document.getElementById("cnt_srv_exp").innerText = `${comps.services.exported} EXPORTED`;
+                    document.getElementById("cnt_rec").innerText = comps.receivers.total; document.getElementById("cnt_rec_exp").innerText = `${comps.receivers.exported} EXPORTED`;
+                    document.getElementById("cnt_pro").innerText = comps.providers.total; document.getElementById("cnt_pro_exp").innerText = `${comps.providers.exported} EXPORTED`;
+                    
+                    const tbodyComp = document.getElementById("table_components"); tbodyComp.innerHTML = "";
+                    const allComps = [
+                        ...comps.activities.details.map(c => ({...c, type: 'Activity'})),
+                        ...comps.services.details.map(c => ({...c, type: 'Service'})),
+                        ...comps.receivers.details.map(c => ({...c, type: 'Receiver'})),
+                        ...comps.providers.details.map(c => ({...c, type: 'Provider'}))
+                    ];
+                    allComps.forEach(c => {
+                        tbodyComp.innerHTML += `<tr><td class="font-mono text-xs text-slate-600 dark:text-slate-400 break-all">${c.name}</td><td class="text-xs font-semibold text-blue-600 dark:text-blue-400">${c.type}</td><td><span class="status-${c.status}">${c.status}</span></td></tr>`;
+                    });
+
+                    const tbodyApk = document.getElementById("table_apkid"); tbodyApk.innerHTML = "";
+                    data.apk_id.forEach(a => {
+                        tbodyApk.innerHTML += `<tr><td class="font-semibold text-blue-600 dark:text-blue-400">${a.framework}</td><td class="text-xs text-slate-600 dark:text-slate-400">${a.description || 'N/A'}</td><td class="font-mono text-xs text-slate-500">${a.evidence}</td></tr>`;
+                    });
+                    if(!data.apk_id.length) tbodyApk.innerHTML = "<tr><td colspan='3' class='text-center text-slate-400 italic py-6'>No external frameworks detected (Native Android Platform).</td></tr>";
+
+                    const urlList = document.getElementById("list_urls"); urlList.innerHTML = "";
+                    data.reconnaissance.urls.forEach(u => {
+                        let domainMatch = u.match(/^https?:\/\/([^/?#]+)(?:[?#]|$)/i);
+                        let domain = domainMatch ? domainMatch[1] : u;
+                        
+                        let osintDetails = "";
+                        if (u.includes("firebaseio.com")) {
+                            osintDetails = `<div class="text-[11px] text-rose-500 font-medium mt-1">🔥 Firebase Database Profiled (Check exposed rules via /.json)</div>`;
+                        } else if (u.includes("s3.amazonaws.com") || u.includes("amazonaws.com")) {
+                            osintDetails = `<div class="text-[11px] text-amber-500 font-medium mt-1">📦 AWS S3 Bucket Detected (Audit read/write IAM policies)</div>`;
+                        } else if (u.startsWith("http://")) {
+                            osintDetails = `<div class="text-[11px] text-rose-400 font-medium mt-1">⚠️ Unencrypted HTTP Transport Channel</div>`;
+                        }
+                        
+                        urlList.innerHTML += `
+                            <li class="pb-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                <span class="text-slate-800 dark:text-slate-200 font-mono text-xs">${escapeHtml(u)}</span>
+                                ${osintDetails}
+                                <div class="flex flex-wrap gap-1.5 mt-2">
+                                    <a href="https://www.virustotal.com/gui/search/${domain}" target="_blank" class="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded hover:bg-blue-600 hover:text-white transition font-medium border border-slate-200 dark:border-slate-700">VirusTotal</a>
+                                    <a href="https://www.shodan.io/search?query=${domain}" target="_blank" class="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded hover:bg-blue-600 hover:text-white transition font-medium border border-slate-200 dark:border-slate-700">Shodan</a>
+                                </div>
+                            </li>`;
+                    });
+                    if(!data.reconnaissance.urls.length) urlList.innerHTML = "<div class='text-slate-400 italic text-xs py-2'>No external endpoint vectors identified.</div>";
+
+                    const emailList = document.getElementById("list_emails"); emailList.innerHTML = "";
+                    data.reconnaissance.emails.forEach(em => {
+                        emailList.innerHTML += `
+                            <li class="pb-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                <span class="text-slate-800 dark:text-slate-200 font-mono text-xs">${escapeHtml(em)}</span>
+                                <div class="flex space-x-1.5 mt-2">
+                                    <a href="https://haveibeenpwned.com/" target="_blank" class="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded hover:bg-rose-600 hover:text-white transition font-medium border border-slate-200 dark:border-slate-700">HaveIBeenPwned Check</a>
+                                </div>
+                            </li>`;
+                    });
+                    if(!data.reconnaissance.emails.length) emailList.innerHTML = "<div class='text-slate-400 italic text-xs py-2'>No email targets extracted.</div>";
+
+                    activateSubCategory('info');
+        }
+
+        async function triggerPdfDownload() {
+            if (!activeFullReportObj) return;
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/report/pdf`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        package_name: activeFullReportObj.package_name,
+                        security_score: activeFullReportObj.security_score,
+                        summary_metrics: "Summary export",
+                        findings_json: JSON.stringify(activeFullReportObj.findings)
+                    })
+                });
+                const blob = await res.blob();
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `CerberusASF_Report_${activeFullReportObj.package_name}.pdf`;
+                link.click();
+            } catch(e) { alert("Failed to generate PDF export."); }
+        }
+
+        async function triggerFuzzScriptDownload() {
+            if (!activeFullReportObj) return;
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/report/fuzz`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        package_name: activeFullReportObj.package_name,
+                        activities_json: JSON.stringify(activeFullReportObj.components.activities.details)
+                    })
+                });
+                const blob = await res.blob();
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `cerberus_fuzz_${activeFullReportObj.package_name}.sh`;
+                link.click();
+            } catch (e) { alert("Failed to download Fuzz Script."); }
+        }
+
+        async function startEngine() {
+            const btnStart = document.getElementById("btn_start");
+            const btnStop = document.getElementById("btn_stop");
+            const pkg = document.getElementById("package_name").value;
+            
+            btnStart.disabled = true;
+            btnStart.className = "w-full bg-slate-200 text-slate-400 font-medium py-2.5 px-4 rounded-md cursor-not-allowed text-xs";
+            crawlerStatus.className = "px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 animate-pulse";
+            crawlerStatus.innerText = "RUNNING";
+            document.getElementById("dynamic_summary").classList.add("hidden");
+            
+            switchConsole("logcat");
+            logcatOut.innerHTML = "<div class='text-slate-500'>[Logcat] Streaming live instrumentation logs...</div>";
+
+            const root = document.getElementById("root_bypass").checked;
+            const pinning = document.getElementById("pinning_bypass").checked;
+            
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/scan/start?package_name=${encodeURIComponent(pkg)}&use_root_bypass=${root}&use_pinning_bypass=${pinning}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.status === "success") {
+                    btnStop.disabled = false;
+                    btnStop.className = "w-full bg-rose-600 hover:bg-rose-700 text-white font-medium py-2.5 px-4 rounded-md transition text-xs cursor-pointer shadow-sm";
+                    
+                    if(windowStreamSocket && windowStreamSocket.readyState === WebSocket.OPEN) {
+                        windowStreamSocket.send(JSON.stringify({action: "start_logcat", package_name: pkg}));
+                    }
+                } else {
+                    alert("Initialization failed: Target process rejected hook attachment.");
+                    resetWorkspaceState();
+                }
+            } catch (err) {
+                alert("Pipeline Connection Refused: Verify FastAPI daemon is active.");
+                resetWorkspaceState();
+            }
+        }
+
+        async function stopEngine() {
+            const btnStop = document.getElementById("btn_stop");
+            btnStop.disabled = true;
+            btnStop.className = "w-full bg-slate-100 dark:bg-slate-800 text-slate-400 font-medium py-2.5 px-4 rounded-md text-xs cursor-not-allowed border border-slate-200 dark:border-slate-700";
+            crawlerStatus.innerText = "STOPPING...";
+            
+            if(windowStreamSocket && windowStreamSocket.readyState === WebSocket.OPEN) {
+                windowStreamSocket.send(JSON.stringify({action: "stop_logcat"}));
+            }
+            
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/scan/stop`, { method: 'POST' });
+                const result = await res.json();
+                
+                if(result.status === "success" && result.findings) {
+                    renderDynamicSummary(result.findings);
+                }
+            } catch (err) { console.error("Session termination error: ", err); } 
+            finally { resetWorkspaceState(); }
+        }
+
+        function renderDynamicSummary(findings) {
+            const tbody = document.getElementById("dynamic_summary_body");
+            tbody.innerHTML = "";
+            document.getElementById("dynamic_summary").classList.remove("hidden");
+
+            if(findings.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='3' class='text-center italic text-slate-400 py-6'>No dynamic runtime vulnerabilities logged during session.</td></tr>";
+                return;
+            }
+            findings.forEach(f => {
+                tbody.innerHTML += `<tr><td class="font-medium text-slate-700 dark:text-slate-300">${f.issue}</td><td><span class="badge-${f.severity}">${f.severity}</span></td><td class="text-slate-600 dark:text-slate-400 text-xs">${f.desc}</td></tr>`;
+            });
+        }
+
+        function resetWorkspaceState() {
+            const btnStart = document.getElementById("btn_start");
+            const btnStop = document.getElementById("btn_stop");
+            btnStart.disabled = false;
+            btnStart.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-md transition text-xs cursor-pointer shadow-sm";
+            btnStop.disabled = true;
+            btnStop.className = "w-full bg-slate-100 dark:bg-slate-800 text-slate-400 font-medium py-2.5 px-4 rounded-md text-xs cursor-not-allowed border border-slate-200 dark:border-slate-700";
+            crawlerStatus.className = "px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 uppercase";
+            crawlerStatus.innerText = "IDLE";
+        }
+
+        async function triggerMemoryScan() {
+            const pattern = document.getElementById("mem_pattern").value;
+            const btn = document.getElementById("btn_mem_scan");
+            const spinner = document.getElementById("mem_spinner");
+            const text = document.getElementById("mem_btn_text");
+            
+            btn.disabled = true;
+            spinner.classList.remove("hidden");
+            text.innerText = "Scanning Heap Memory...";
+            switchConsole("telemetry");
+            
+            try {
+                const query = pattern ? `?pattern=${encodeURIComponent(pattern)}` : "";
+                const res = await authFetch(`${baseHttpEndpoint}/api/scan/memory${query}`, { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.status === "success" && data.results) {
+                    renderMemorySummary(data.results);
+                    if(data.results.length > 0) {
+                        document.getElementById("memory_summary").scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }
+                }
+            } catch (e) {
+                alert("Failed to connect to API daemon for memory diagnostics.");
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add("hidden");
+                text.innerText = "Scan RAM & Dump Secrets";
+            }
+        }
+
+        function renderMemorySummary(results) {
+            const tbody = document.getElementById("memory_summary_body");
+            const wrapper = document.getElementById("memory_summary");
+            const badge = document.getElementById("mem_count_badge");
+            
+            tbody.innerHTML = "";
+            wrapper.classList.remove("hidden");
+            badge.innerText = `${results.length} Artifacts Extracted`;
+            
+            if(results.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='4' class='text-center italic text-slate-400 py-6 font-sans'>No sensitive string matches or secret patterns found in readable process RAM.</td></tr>";
+                return;
+            }
+            results.forEach(r => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-purple-500/5 transition-colors">
+                        <td class="font-semibold text-purple-600 dark:text-purple-400 select-all">${r.address}</td>
+                        <td><span class="badge-HIGH">${r.category}</span></td>
+                        <td class="text-slate-800 dark:text-slate-200 font-medium break-all">${escapeHtml(r.identified_data || 'N/A')}</td>
+                        <td class="text-slate-700 dark:text-slate-300 break-all bg-slate-100/50 dark:bg-slate-800/50 p-2 rounded font-mono">${escapeHtml(r.snippet)}</td>
+                    </tr>`;
+            });
+        }
+
+        checkAuthOnLoad();
+    </script>
+</body>
+</html>
