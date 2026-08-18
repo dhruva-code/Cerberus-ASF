@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 import json
@@ -9,10 +10,11 @@ from typing import Optional, Dict, Any
 from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 
 from app.static_engine import StaticAnalyzer
 from app.dynamic_engine import DynamicAnalyzer
+from app import report_engine
 from app import db
 from app import auth
 from app import crypto_utils
@@ -69,12 +71,6 @@ def get_dynamic_session(user_id: int) -> DynamicAnalyzer:
 # ==========================================
 # PYDANTIC DATA MODELS
 # ==========================================
-class PDFRequest(BaseModel):
-    package_name: str
-    security_score: int
-    summary_metrics: str
-    findings_json: str
-
 class FuzzRequest(BaseModel):
     package_name: str
     activities_json: str
@@ -198,6 +194,17 @@ async def get_scan_detail(scan_id: int, current_user: dict = Depends(auth.get_cu
     if not row or row["user_id"] != current_user["id"]:
         raise HTTPException(status_code=404, detail="Scan not found.")
     return json.loads(row["result_json"])
+
+@app.delete("/api/scans/{scan_id}")
+async def delete_scan(scan_id: int, current_user: dict = Depends(auth.get_current_user)):
+    """Permanently deletes a scan from the caller's history. Ownership is
+    enforced at the SQL level in db.delete_scan(), not just here."""
+    deleted = db.delete_scan(scan_id, current_user["id"])
+    if not deleted:
+        # Same 404 for "doesn't exist" and "not yours" — see get_scan_detail above.
+        raise HTTPException(status_code=404, detail="Scan not found.")
+    logger.info(f"Deleted scan {scan_id} (user: {current_user['username']})")
+    return {"status": "ok"}
 
 # ==========================================
 # STATIC ANALYSIS ROUTES
@@ -348,25 +355,33 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(
 # REPORT GENERATION ROUTES
 # ==========================================
 @app.post("/api/report/pdf")
-async def generate_pdf_report(req: PDFRequest, current_user: dict = Depends(auth.get_current_user)):
-    """Compiles an executive summary report from static findings."""
-    logger.info(f"Generating PDF export for {req.package_name}")
-    report_content = f"Cerberus-ASF Enterprise Security Report\n=================================\n\n"
-    report_content += f"Target Package: {req.package_name}\nOverall Threat Index: {req.security_score}/100\n"
-    report_content += f"Component Summary: {req.summary_metrics}\n\n--- DETAILED FINDINGS ---\n"
+async def export_pdf_report(payload: Dict[str, Any], current_user: dict = Depends(auth.get_current_user)):
+    """Generates a full VAPT-style PDF static analysis report from a scan result.
+
+    payload is the full scan result object (the same shape returned by
+    /api/static/upload and /api/scans/{id}) — not a hand-picked subset —
+    so the report has everything it needs: app metadata, components,
+    permissions, certificate/manifest issues, findings, and secrets.
+    """
+    package_name = payload.get("package_name") or "report"
+    logger.info(f"Generating PDF export for {package_name} (user: {current_user['username']})")
 
     try:
-        findings = json.loads(req.findings_json)
-        for f in findings:
-            report_content += f"\n[{f.get('severity', 'INFO')}] {f.get('title', 'Unknown Issue')}\nOWASP Category: {f.get('owasp', 'N/A')}\nRemediation: {f.get('remediation', 'N/A')}\n"
+        pdf_bytes = report_engine.generate_pdf_report(payload)
     except Exception as e:
-        logger.error(f"Error parsing findings for PDF: {e}")
+        logger.error(f"PDF report generation failed for {package_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"PDF report generation failed: {e}")
 
-    report_path = os.path.join(tempfile.gettempdir(), f"CerberusASF_Report_{req.package_name}.txt")
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(report_content)
-
-    return FileResponse(report_path, filename=f"CerberusASF_Report_{req.package_name}.txt")
+    # package_name can originate from an attacker-controlled APK and flows
+    # into an HTTP response header below — whitelist-sanitize it so it can't
+    # inject a malformed/oversized filename or break the header.
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", package_name)[:80] or "report"
+    filename = f"Cerberus-ASF_{safe_name}_StaticAnalysis_Report.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 @app.post("/api/report/fuzz")
 async def generate_fuzz_script(req: FuzzRequest, current_user: dict = Depends(auth.get_current_user)):

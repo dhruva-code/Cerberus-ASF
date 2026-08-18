@@ -52,6 +52,7 @@ declare -A REQUIRED_PY_PKGS=(
     [anthropic]="anthropic"
     [tree_sitter]="tree-sitter"
     [tree_sitter_language_pack]="tree-sitter-language-pack"
+    [reportlab]="reportlab"
 )
 for module in "${!REQUIRED_PY_PKGS[@]}"; do
     "$VENV_PY" -c "import ${module}" >/dev/null 2>&1 || MISSING_REQUIRED+=("${REQUIRED_PY_PKGS[$module]} (python package '${module}' not importable)")
@@ -68,6 +69,19 @@ command -v jadx     >/dev/null 2>&1 || MISSING_RECOMMENDED+=("jadx (AST-based st
 command -v apktool  >/dev/null 2>&1 || MISSING_RECOMMENDED+=("apktool (primary AndroidManifest.xml extraction method)")
 { command -v aapt >/dev/null 2>&1 || command -v aapt2 >/dev/null 2>&1; } || MISSING_RECOMMENDED+=("aapt/aapt2 (APK metadata extraction)")
 command -v apksigner >/dev/null 2>&1 || MISSING_RECOMMENDED+=("apksigner (certificate/signature analysis)")
+
+# --- tree-sitter Java grammar cache (AST-based static analysis) ---
+# Downloaded from GitHub on first use and cached under ~/.cache/tree-sitter-
+# language-pack/ — not fatal if missing/unreachable (app/ast_engine.py
+# degrades gracefully and the server still starts), but worth flagging here
+# since it silently weakens static analysis otherwise.
+if ! "$VENV_PY" -c "
+import sys
+from tree_sitter_language_pack import downloaded_languages
+sys.exit(0 if 'java' in downloaded_languages() else 1)
+" >/dev/null 2>&1; then
+    MISSING_RECOMMENDED+=("tree-sitter Java grammar not cached (AST-based structural analysis + secret-field detection will be skipped) — needs one successful outbound download from github.com on first use; re-run ./install.sh or see INSTALL.md's troubleshooting section")
+fi
 
 # --- dynamic analysis: the built Frida agent bundle ---
 if [ ! -f "$REPO_ROOT/agent/dist/core_hooks.js" ]; then

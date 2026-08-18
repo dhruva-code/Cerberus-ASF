@@ -160,3 +160,12 @@ def list_scans_for_user(user_id: int):
 def get_scan(scan_id: int):
     with get_connection() as conn:
         return conn.execute("SELECT * FROM scans WHERE id = ?", (scan_id,)).fetchone()
+
+
+def delete_scan(scan_id: int, user_id: int) -> bool:
+    """Deletes a scan, scoped to its owner at the SQL level (not just in the
+    calling route) so a caller can never delete a scan it doesn't own, even
+    via a bug elsewhere. Returns True if a row was actually deleted."""
+    with get_connection() as conn:
+        cur = conn.execute("DELETE FROM scans WHERE id = ? AND user_id = ?", (scan_id, user_id))
+        return cur.rowcount > 0

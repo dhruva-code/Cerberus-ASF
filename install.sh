@@ -94,7 +94,7 @@ if command -v jadx >/dev/null 2>&1; then
 else
     info "Installing jadx ${JADX_VERSION} to ${JADX_INSTALL_DIR}..."
     TMP_DIR=$(mktemp -d)
-    if curl -sL -o "$TMP_DIR/jadx.zip" \
+    if curl --connect-timeout 15 --max-time 180 -sL -o "$TMP_DIR/jadx.zip" \
         "https://github.com/skylot/jadx/releases/download/v${JADX_VERSION}/jadx-${JADX_VERSION}.zip" \
         && sudo mkdir -p "$JADX_INSTALL_DIR" \
         && sudo unzip -q -o "$TMP_DIR/jadx.zip" -d "$JADX_INSTALL_DIR" \
@@ -115,8 +115,13 @@ if command -v trufflehog >/dev/null 2>&1; then
     ok "trufflehog already present."
 else
     info "Installing trufflehog (optional)..."
-    if curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh \
-        | sudo sh -s -- -b /usr/local/bin >/dev/null 2>&1
+    # Wrapped in an outer `timeout`, not just curl flags on the initial fetch —
+    # the installer script piped into `sh` does its own internal download of
+    # the actual trufflehog binary, which curl's own timeout flags wouldn't
+    # bound. This is optional (see OPTIONAL_WARNINGS below), so failing fast
+    # on a stalled network beats hanging the whole installer over it.
+    if timeout 120 bash -c 'curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh \
+        | sudo sh -s -- -b /usr/local/bin' >/dev/null 2>&1
     then
         ok "trufflehog installed."
     else
@@ -145,6 +150,40 @@ cd "$REPO_ROOT" || exit 1
 chmod +x run.sh 2>/dev/null
 
 # ------------------------------------------------------------------
+# 4b. Pre-warm the tree-sitter Java grammar cache (AST-based static analysis)
+# ------------------------------------------------------------------
+# tree-sitter-language-pack doesn't ship compiled grammars in its wheel — it
+# downloads a ~22MB bundle from GitHub Releases the first time get_parser()
+# is called, caching it under ~/.cache/tree-sitter-language-pack/. Left
+# unwarmed, that download happens lazily the first time the server analyzes
+# an APK (or, on older builds of this app, even at server startup) — right
+# when a security researcher is mid-engagement on a locked-down network
+# (proxy/firewall/VPN, common on Kali/Parrot). Doing it here means any
+# failure is a clear warning during install, on a network the operator is
+# already expecting to use, instead of a surprise later. The app itself
+# also no longer crashes if this was skipped or fails — see app/ast_engine.py
+# — this step just avoids paying the download cost at the worst possible time.
+info "Pre-warming the tree-sitter Java grammar cache (AST-based static analysis)..."
+TS_GRAMMAR_OK=0
+for attempt in 1 2; do
+    # Bounded with an outer `timeout` on top of the library's own internal
+    # request timeout — belt-and-suspenders so a stalled (not just refused)
+    # connection can never hang the installer indefinitely; 60s per attempt
+    # is generous for a ~22MB download on any network that's going to work
+    # at all.
+    if timeout 60 "$BACKEND_DIR/venv/bin/python3" -c "from tree_sitter_language_pack import get_parser; get_parser('java')" >/dev/null 2>&1; then
+        TS_GRAMMAR_OK=1
+        break
+    fi
+    [ "$attempt" -eq 1 ] && { warn "Grammar download failed or timed out, retrying once..."; sleep 3; }
+done
+if [ "$TS_GRAMMAR_OK" -eq 1 ]; then
+    ok "tree-sitter Java grammar cached."
+else
+    OPTIONAL_WARNINGS+=("Could not download the tree-sitter Java grammar (likely a network/proxy/firewall issue reaching github.com). AST-based structural findings and secret-field detection will be skipped until this succeeds — everything else (manifest, certificate, TruffleHog secrets, dynamic analysis) is unaffected. The server will retry automatically on next start; see INSTALL.md's troubleshooting section.")
+fi
+
+# ------------------------------------------------------------------
 # 5. Frida agent bundle (dynamic analysis)
 # ------------------------------------------------------------------
 # Raw unbundled Frida scripts don't get an implicit `Java` global on
@@ -154,10 +193,15 @@ chmod +x run.sh 2>/dev/null
 # actually loads for dynamic analysis.
 info "Building the Frida agent bundle (dynamic analysis)..."
 chmod +x agent/build.sh 2>/dev/null
-if (cd agent && ./build.sh); then
+# agent/build.sh runs `npm install`, which has no reliable overall wall-clock
+# cap of its own — a stalled (not just refused) registry connection could
+# otherwise hang this whole installer indefinitely, even though the agent
+# bundle itself is optional. 5 minutes is generous for this project's small
+# dependency set on any network that's actually working.
+if timeout 300 bash -c 'cd agent && ./build.sh'; then
     ok "Frida agent bundle built."
 else
-    OPTIONAL_WARNINGS+=("Frida agent build failed — dynamic analysis (root/SSL bypass, memory forensics) won't work until 'agent/build.sh' succeeds. Static analysis is unaffected.")
+    OPTIONAL_WARNINGS+=("Frida agent build failed or timed out — dynamic analysis (root/SSL bypass, memory forensics) won't work until 'agent/build.sh' succeeds. Static analysis is unaffected.")
 fi
 
 # ------------------------------------------------------------------

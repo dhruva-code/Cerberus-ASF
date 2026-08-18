@@ -108,6 +108,7 @@ Full request-flow walkthroughs for both pipelines are in the [technical document
 | Dynamic analysis | Frida / frida-tools, frida-compile + frida-java-bridge (agent bundling), adb |
 | AI integration | `google-genai`, `anthropic`, `openai` SDKs — per-user, opt-in |
 | Data | SQLite (stdlib `sqlite3`, WAL mode, no ORM) |
+| Reporting | `reportlab` — generates the exported PDF static analysis report |
 | Security | bcrypt (passwords), Fernet / `cryptography` (AI key encryption at rest), bearer-token sessions |
 
 ## Quick start
@@ -185,7 +186,7 @@ All environment variables are optional — the app works out of the box with non
 |---|---|---|
 | `CERBERUS_DB_PATH` | `backend/app/cerberus-asf.db` | SQLite database location |
 | `CERBERUS_SECRET_PATH` | `backend/app/.instance_secret` | Fernet key encrypting stored AI keys — treat like a password |
-| `CERBERUS_JADX_TIMEOUT` | `180` | Max seconds for a single jadx decompile |
+| `CERBERUS_JADX_TIMEOUT` | `600` | Max seconds for a single jadx decompile |
 | `CERBERUS_MEMORY_SCAN_TIMEOUT` | `120` | Max seconds for a single memory forensics sweep |
 | `CERBERUS_HOST` / `CERBERUS_PORT` | `0.0.0.0` / `8000` | Bind address/port (read by `run.sh`) |
 

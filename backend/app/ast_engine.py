@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 
 from tree_sitter import Query, QueryCursor
 from tree_sitter_language_pack import get_parser, get_language
@@ -14,6 +15,8 @@ from app.rules.secret_rules import (
 )
 from app.provenance import classify as classify_provenance
 
+logger = logging.getLogger("Cerberus-ASF")
+
 SKIP_FILENAMES = {"R.java", "BuildConfig.java"}
 MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024
 MAX_CODE_SNIPPET_CHARS = 300
@@ -21,18 +24,75 @@ MAX_CODE_SNIPPET_CHARS = 300
 
 class ASTAnalyzer:
     """Runs tree-sitter structural rules and field-secret detection over a
-    jadx-decompiled Java source tree."""
+    jadx-decompiled Java source tree.
+
+    tree_sitter_language_pack does not ship compiled grammars in its wheel —
+    get_parser()/get_language() download a ~22MB bundle from GitHub Releases
+    on first use per machine, caching it under ~/.cache/tree-sitter-
+    language-pack/. On a network that can't reach GitHub cleanly (proxy,
+    firewall, VPN not yet up, a flaky link — all common on the
+    security-testing distros/networks this tool targets), that download
+    times out and previously raised straight out of this constructor, which
+    is called eagerly at FastAPI module-import time (app/main.py:
+    `static_engine = StaticAnalyzer()`) — so a single transient network hit
+    took the *entire* server down before it could even start listening, not
+    just this one feature. This is now caught here and degrades to
+    "AST/structural analysis unavailable" instead, matching how a missing
+    jadx or trufflehog is already handled elsewhere in this module."""
 
     def __init__(self):
-        self.parser = get_parser("java")
-        self.language = get_language("java")
+        self.available = False
+        self.unavailable_reason = None
+        self.parser = None
+        self.language = None
         self._compiled_rules = []
-        for rule in AST_RULES:
-            compiled_queries = [Query(self.language, q) for q in rule["queries"]]
-            self._compiled_rules.append((rule, compiled_queries))
-        self._secret_query = Query(self.language, SECRET_FIELD_QUERY)
+        self._secret_query = None
+
+        last_error = None
+        for attempt in range(2):  # one retry — the failure mode is a one-shot network download, often transient
+            try:
+                self.parser = get_parser("java")
+                self.language = get_language("java")
+                break
+            except Exception as e:
+                last_error = e
+                if attempt == 0:
+                    logger.warning(f"tree-sitter Java grammar load failed (attempt 1/2), retrying: {e}")
+                    time.sleep(2)
+
+        if self.parser is None or self.language is None:
+            self.unavailable_reason = str(last_error)
+            logger.error(
+                "AST-based static analysis DISABLED — could not load the tree-sitter Java grammar "
+                f"after 2 attempts ({last_error}). This is almost always a network problem: "
+                "tree-sitter-language-pack downloads compiled grammars from GitHub on first use "
+                "and caches them in ~/.cache/tree-sitter-language-pack/. Check outbound access to "
+                "github.com/objects.githubusercontent.com (proxy/firewall/VPN), then either restart "
+                "the server to retry, or pre-warm the cache with: "
+                "backend/venv/bin/python3 -c \"from tree_sitter_language_pack import get_parser; get_parser('java')\". "
+                "Static analysis will continue to run — manifest, certificate, and regex/TruffleHog "
+                "secret detection are all unaffected — but structural code findings (weak crypto, "
+                "SQL injection, insecure logging, etc.) and AST-based secret-field detection will be "
+                "skipped until this is resolved."
+            )
+            return
+
+        try:
+            for rule in AST_RULES:
+                compiled_queries = [Query(self.language, q) for q in rule["queries"]]
+                self._compiled_rules.append((rule, compiled_queries))
+            self._secret_query = Query(self.language, SECRET_FIELD_QUERY)
+            self.available = True
+        except Exception as e:
+            # A grammar/query mismatch would be a packaging bug, not a network
+            # blip — still shouldn't crash the whole server over it.
+            self.unavailable_reason = str(e)
+            logger.error(f"AST-based static analysis DISABLED — failed to compile structural rule queries: {e}")
 
     def scan_directory(self, sources_dir: str, package_name: str = ""):
+        if not self.available:
+            return [], []
+
         findings, secrets = [], []
         for root, _, files in os.walk(sources_dir):
             for fname in files:

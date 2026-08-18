@@ -351,7 +351,7 @@ class StaticAnalyzer:
                         container["total"] += 1
                         if is_exported:
                             container["exported"] += 1
-                            manifest_analysis.append({"issue": f"{label} ({fq_name}) is not Protected", "severity": "MEDIUM", "description": "Component is shared with other apps via IPC.", "remediation": "Set android:exported='false' or apply strong signature permissions."})
+                            manifest_analysis.append({"issue": f"{label} ({fq_name}) is not Protected", "severity": "MEDIUM", "description": "Component is shared with other apps via IPC.", "remediation": "Set android:exported='false' or apply strong signature permissions.", "evidence": f'<{tag} android:name="{name_match.group(1)}" android:exported="true">'})
                             security_score -= 2
                         container["details"].append({"name": fq_name, "status": "EXPORTED" if is_exported else "INTERNAL"})
 
@@ -365,20 +365,20 @@ class StaticAnalyzer:
             try:
                 m_sdk = app_info["min_sdk"]
                 if m_sdk and str(m_sdk).isdigit() and int(m_sdk) < 29:
-                    manifest_analysis.append({"issue": f"Outdated MinSDK [android:minSdkVersion={m_sdk}]", "severity": "HIGH", "description": "App can be installed on older vulnerable Android versions.", "remediation": "Support an Android version >= 10 (API 29)."})
+                    manifest_analysis.append({"issue": f"Outdated MinSDK [android:minSdkVersion={m_sdk}]", "severity": "HIGH", "description": "App can be installed on older vulnerable Android versions.", "remediation": "Support an Android version >= 10 (API 29).", "evidence": f'android:minSdkVersion="{m_sdk}"'})
                     security_score -= 10
             except Exception: pass
 
             if 'android:debuggable="true"' in manifest_raw:
-                manifest_analysis.append({"issue": "Debug Enabled [android:debuggable=true]", "severity": "HIGH", "description": "Debugging is enabled, allowing reverse engineers to attach debuggers.", "remediation": "Set android:debuggable='false' in production."})
+                manifest_analysis.append({"issue": "Debug Enabled [android:debuggable=true]", "severity": "HIGH", "description": "Debugging is enabled, allowing reverse engineers to attach debuggers.", "remediation": "Set android:debuggable='false' in production.", "evidence": 'android:debuggable="true"'})
                 security_score -= 15
 
             if 'android:allowBackup="true"' in manifest_raw:
-                manifest_analysis.append({"issue": "Application Data Backup Allowed [android:allowBackup=true]", "severity": "MEDIUM", "description": "Anyone can backup application data via adb.", "remediation": "Set android:allowBackup='false'."})
+                manifest_analysis.append({"issue": "Application Data Backup Allowed [android:allowBackup=true]", "severity": "MEDIUM", "description": "Anyone can backup application data via adb.", "remediation": "Set android:allowBackup='false'.", "evidence": 'android:allowBackup="true"'})
                 security_score -= 5
 
             if 'android:usesCleartextTraffic="true"' in manifest_raw:
-                manifest_analysis.append({"issue": "Cleartext Traffic Allowed", "severity": "HIGH", "description": "App is configured to permit clear text HTTP traffic.", "remediation": "Set usesCleartextTraffic='false'."})
+                manifest_analysis.append({"issue": "Cleartext Traffic Allowed", "severity": "HIGH", "description": "App is configured to permit clear text HTTP traffic.", "remediation": "Set usesCleartextTraffic='false'.", "evidence": 'android:usesCleartextTraffic="true"'})
                 security_score -= 10
 
         # --- STRUCTURAL AST ANALYSIS (crypto/logging/SQL/etc.) + FIELD SECRET DETECTION ---
@@ -428,17 +428,17 @@ class StaticAnalyzer:
         c_details = cert_data.get("details", {})
         if c_details:
             if "Android Debug" in c_details.get("issuer", "") or "Android Debug" in c_details.get("subject", ""):
-                cert_data["issues"].append({"issue": "Signed with Debug Certificate", "severity": "HIGH", "owasp": "M1: Insecure Data", "description": "Application is signed with an insecure debug certificate.", "remediation": "Sign with release keys.", "link": "https://developer.android.com/studio/publish/app-signing"})
+                cert_data["issues"].append({"issue": "Signed with Debug Certificate", "severity": "HIGH", "owasp": "M1: Insecure Data", "description": "Application is signed with an insecure debug certificate.", "remediation": "Sign with release keys.", "link": "https://developer.android.com/studio/publish/app-signing", "evidence": f"Certificate subject: {c_details.get('subject', 'Unknown')}"})
                 security_score -= 15
             if "sha1" in c_details.get("hash", "").lower() or "sha1" in c_details.get("signature_algo", "").lower():
-                cert_data["issues"].append({"issue": "Vulnerable hash collision (SHA-1)", "severity": "MEDIUM", "owasp": "M5: Insufficient Cryptography", "description": "App uses weak SHA-1 signatures.", "remediation": "Sign with SHA-256.", "link": "https://cve.mitre.org"})
+                cert_data["issues"].append({"issue": "Vulnerable hash collision (SHA-1)", "severity": "MEDIUM", "owasp": "M5: Insufficient Cryptography", "description": "App uses weak SHA-1 signatures.", "remediation": "Sign with SHA-256.", "link": "https://cve.mitre.org", "evidence": f"Signature algorithm: {c_details.get('public_key_algo', 'Unknown')}, SHA-1: {c_details.get('sha1', 'Unknown')}"})
 
         if cert_data.get("v1") and not cert_data.get("v2") and not cert_data.get("v3"):
             cert_data["janus_vulnerable"] = True
-            cert_data["issues"].append({"issue": "Vulnerable to Janus Vulnerability", "severity": "HIGH", "owasp": "M5: Insufficient Cryptography", "description": "Application is signed with v1 signature scheme only.", "remediation": "Sign the APK using APK Signature Scheme v2 or v3 dynamically.", "link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-13156"})
+            cert_data["issues"].append({"issue": "Vulnerable to Janus Vulnerability", "severity": "HIGH", "owasp": "M5: Insufficient Cryptography", "description": "Application is signed with v1 signature scheme only.", "remediation": "Sign the APK using APK Signature Scheme v2 or v3 dynamically.", "link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-13156", "evidence": f"Signature schemes verified — v1: {cert_data.get('v1')}, v2: {cert_data.get('v2')}, v3: {cert_data.get('v3')}, v4: {cert_data.get('v4')}"})
             security_score -= 20
         elif not cert_data.get("is_signed"):
-            cert_data["issues"].append({"issue": "Unsigned Application Target", "severity": "HIGH", "owasp": "M1: Insecure Data", "description": "Application lacks a valid cryptographic code signing signature.", "remediation": "Configure signed outputs inside keystore publishing setups."})
+            cert_data["issues"].append({"issue": "Unsigned Application Target", "severity": "HIGH", "owasp": "M1: Insecure Data", "description": "Application lacks a valid cryptographic code signing signature.", "remediation": "Configure signed outputs inside keystore publishing setups.", "evidence": "apksigner verify: no valid signing certificate found in APK"})
 
         # --- GLOBAL BINARY EXTRACTION (RECON, FRAMEWORKS, SECRET-PATTERN MATCHING, LEGACY FALLBACK) ---
         frameworks = []

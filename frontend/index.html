@@ -292,7 +292,7 @@
                 <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800 pb-3">Scan History</h3>
                 <div class="panel-card overflow-x-auto">
                     <table>
-                        <thead><tr><th>App Name</th><th>Package</th><th>File</th><th>Score</th><th>Date</th></tr></thead>
+                        <thead><tr><th>App Name</th><th>Package</th><th>File</th><th>Score</th><th>Date</th><th></th></tr></thead>
                         <tbody id="table_history"></tbody>
                     </table>
                 </div>
@@ -747,12 +747,12 @@
 
         async function loadScanHistory() {
             const tbody = document.getElementById("table_history");
-            tbody.innerHTML = "<tr><td colspan='5' class='text-center text-slate-400 italic py-6'>Loading...</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='6' class='text-center text-slate-400 italic py-6'>Loading...</td></tr>";
             try {
                 const res = await authFetch(`${baseHttpEndpoint}/api/scans`);
                 const scans = await res.json();
                 if (!scans.length) {
-                    tbody.innerHTML = "<tr><td colspan='5' class='text-center text-slate-400 italic py-6'>No past scans yet.</td></tr>";
+                    tbody.innerHTML = "<tr><td colspan='6' class='text-center text-slate-400 italic py-6'>No past scans yet.</td></tr>";
                     return;
                 }
                 tbody.innerHTML = "";
@@ -766,11 +766,34 @@
                         <td class="text-xs text-slate-500 break-all">${escapeHtml(s.file_name || "")}</td>
                         <td class="font-mono text-xs font-semibold ${s.security_score < 50 ? 'text-rose-600' : s.security_score < 80 ? 'text-amber-500' : 'text-emerald-600'}">${s.security_score ?? "N/A"}</td>
                         <td class="text-xs text-slate-500">${escapeHtml(s.created_at || "")}</td>
+                        <td class="text-right"></td>
                     `;
+                    const delCell = tr.lastElementChild;
+                    const delBtn = document.createElement("button");
+                    delBtn.title = "Delete this scan";
+                    delBtn.className = "text-[11px] font-semibold px-2 py-1 rounded-md text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition";
+                    delBtn.textContent = "Delete";
+                    delBtn.onclick = (ev) => { ev.stopPropagation(); deleteScanFromHistory(s.id, tr); };
+                    delCell.appendChild(delBtn);
                     tbody.appendChild(tr);
                 });
             } catch (e) {
-                tbody.innerHTML = "<tr><td colspan='5' class='text-center text-rose-500 italic py-6'>Failed to load scan history.</td></tr>";
+                tbody.innerHTML = "<tr><td colspan='6' class='text-center text-rose-500 italic py-6'>Failed to load scan history.</td></tr>";
+            }
+        }
+
+        async function deleteScanFromHistory(scanId, rowEl) {
+            if (!confirm("Delete this scan from your history? This cannot be undone.")) return;
+            try {
+                const res = await authFetch(`${baseHttpEndpoint}/api/scans/${scanId}`, { method: "DELETE" });
+                if (!res.ok) { alert("Could not delete that scan."); return; }
+                rowEl.remove();
+                const tbody = document.getElementById("table_history");
+                if (!tbody.children.length) {
+                    tbody.innerHTML = "<tr><td colspan='6' class='text-center text-slate-400 italic py-6'>No past scans yet.</td></tr>";
+                }
+            } catch (e) {
+                alert("Could not delete that scan.");
             }
         }
 
@@ -1183,19 +1206,23 @@
                 const res = await authFetch(`${baseHttpEndpoint}/api/report/pdf`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        package_name: activeFullReportObj.package_name,
-                        security_score: activeFullReportObj.security_score,
-                        summary_metrics: "Summary export",
-                        findings_json: JSON.stringify(activeFullReportObj.findings)
-                    })
+                    // Send the full scan result, not a hand-picked subset --
+                    // the report needs app metadata, components, permissions,
+                    // certificate/manifest issues, and secrets, not just findings.
+                    body: JSON.stringify(activeFullReportObj)
                 });
+                if (!res.ok) {
+                    let detail = `HTTP ${res.status}`;
+                    try { detail = (await res.json()).detail || detail; } catch(_) {}
+                    throw new Error(detail);
+                }
                 const blob = await res.blob();
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `CerberusASF_Report_${activeFullReportObj.package_name}.pdf`;
+                link.download = `Cerberus-ASF_${activeFullReportObj.package_name}_StaticAnalysis_Report.pdf`;
                 link.click();
-            } catch(e) { alert("Failed to generate PDF export."); }
+                URL.revokeObjectURL(link.href);
+            } catch(e) { alert("Failed to generate PDF export: " + e.message); }
         }
 
         async function triggerFuzzScriptDownload() {
